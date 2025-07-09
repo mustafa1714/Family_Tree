@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: family-tree-db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - family-tree-network
+
+  backend:
+    build: ./backend
+    container_name: family-tree-backend
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    environment:
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      OTP_EXPIRY: ${OTP_EXPIRY}
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - family-tree-network
+
+  frontend:
+    build: ./frontend
+    container_name: family-tree-frontend
+    restart: always
+    ports:
+      - "80:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - family-tree-network
+    depends_on:
+      - backend
+
+networks:
+  family-tree-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

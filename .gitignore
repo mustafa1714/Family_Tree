@@ -1,0 +1,38 @@
+# Env files
+.env
+.env.local
+
+# Node.js
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Buil 
+dist/
+build/
+*.log
+
+# Prisma
+/prisma/migrations
+/prisma/*.db
+
+# Docker
+docker-compose.override.yml
+
+# Test
+coverage/
+.nyc_output/
+
+# Next.js (frontend)
+.next/
+out/
+
+# NestJS (backend)
+*.js.map
+*.d.ts

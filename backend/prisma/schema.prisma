@@ -1,0 +1,321 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model Family {
+  id              String    @id @default(uuid())
+  name            String
+  logoUrl         String?
+  cardStyle       CardStyle @default(SQUARE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  users           User[]
+  khatmas         Khatma[]
+  founderFatherId String?
+  founderFather   User?     @relation("FamilyFounderFather", fields: [founderFatherId], references: [id])
+  founderMotherId String?
+  founderMother   User?     @relation("FamilyFounderMother", fields: [founderMotherId], references: [id])
+  
+  @@index([name])
+  @@map("families")
+}
+
+model User {
+  id               String    @id @default(uuid())
+  username         String    @unique
+  email            String    @unique
+  phone            String?   @unique
+  passwordHash     String
+  firstName        String
+  middleName       String?
+  lastName         String?
+  avatarUrl        String?
+  coverUrl         String?
+  birthDate        DateTime?
+  birthCountry     String?
+  residenceCountry String?
+  graduationDate   DateTime?
+  marriageDate     DateTime?
+  jobTitle         String?
+  isStudent        Boolean   @default(false)
+  educationLevel   String?
+  educationYear    String?
+  childrenCount    Int?      @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  isSuperAdmin     Boolean   @default(false)
+  isActive         Boolean   @default(false)
+
+  // Family relations
+  familyId         String
+  family           Family    @relation(fields: [familyId], references: [id])
+
+  // Family tree relations
+  fatherId         String?
+  father           User?     @relation("FatherChildren", fields: [fatherId], references: [id])
+  motherId         String?
+  mother           User?     @relation("MotherChildren", fields: [motherId], references: [id])
+  spouseId         String?
+  spouse           User?     @relation("Spouses", fields: [spouseId], references: [id])
+  motherName       String?
+
+  // Relations
+  createdHappenings Happening[]
+  notifications     Notification[]
+  khatmaParticipants KhatmaParticipant[]
+  otps              Otp[]
+  sessions          Session[]
+  eventInvitations  EventInvitation[]
+  memoryAttendees   MemoryAttendee[]
+
+  // Self-referential relations
+  childrenAsFather User[]    @relation("FatherChildren")
+  childrenAsMother User[]    @relation("MotherChildren")
+  spouses          User[]    @relation("Spouses")
+
+  @@index([email])
+  @@index([familyId])
+  @@index([createdAt])
+  @@map("users")
+  auditLog AuditLog[]
+  khatma Khatma[]
+  familyFounderFather Family[] @relation("FamilyFounderFather")
+  familyFounderMother Family[] @relation("FamilyFounderMother")
+}
+
+model Happening {
+  id              String    @id @default(uuid())
+  title           String
+  description     String?
+  startDatetime   DateTime
+  endDatetime     DateTime?
+  locationType    LocationType @default(ADDRESS)
+  location        String?
+  visibility      Visibility   @default(FAMILY)
+  isEvent         Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  files           HappeningFile[]
+  eventInvitations EventInvitation[]
+  memoryAttendees MemoryAttendee[]
+
+  @@index([userId])
+  @@index([startDatetime])
+  @@map("happenings")
+}
+
+model HappeningFile {
+  id            String   @id @default(uuid())
+  fileUrl       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  happeningId   String
+  happening     Happening @relation(fields: [happeningId], references: [id])
+
+  @@index([happeningId])
+  @@map("happening_files")
+}
+
+model EventInvitation {
+  id           String     @id @default(uuid())
+  response     Response   @default(PENDING)
+  attended     Boolean    @default(false)
+  invitedAt    DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  happeningId  String
+  happening    Happening  @relation(fields: [happeningId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+
+  @@unique([happeningId, userId])
+  @@map("event_invitations")
+}
+
+model MemoryAttendee {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  happeningId  String
+  happening    Happening @relation(fields: [happeningId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@unique([happeningId, userId])
+  @@map("memory_attendees")
+}
+
+model Khatma {
+  id           String    @id @default(uuid())
+  name         String
+  startDate    DateTime
+  endDate      DateTime
+  status       KhatmaStatus @default(NOT_STARTED)
+  visibility   Visibility   @default(FAMILY)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  familyId     String
+  family       Family    @relation(fields: [familyId], references: [id])
+  createdById  String
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  participants KhatmaParticipant[]
+
+  @@index([familyId])
+  @@index([status])
+  @@map("khatmas")
+}
+
+model KhatmaParticipant {
+  id          String   @id @default(uuid())
+  assignedParts String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  khatmaId    String
+  khatma      Khatma   @relation(fields: [khatmaId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([khatmaId, userId])
+  @@map("khatma_participants")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  type        String
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model Otp {
+  id          String   @id @default(uuid())
+  email       String
+  phone       String?
+  code        String
+  type        OtpType
+  expiresAt   DateTime
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([email])
+  @@index([phone])
+  @@index([expiresAt])
+  @@map("otps")
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  jti         String   @unique
+  loginAt     DateTime @default(now())
+  logoutAt    DateTime?
+  expiresAt   DateTime
+  ipAddress   String
+  userAgent   String
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([jti])
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  entityType  String
+  entityId    String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Enums
+enum CardStyle {
+  SQUARE
+  HEART
+}
+
+enum LocationType {
+  ADDRESS
+  GPS
+  ONLINE
+}
+
+enum Visibility {
+  PUBLIC
+  FAMILY
+  SELECTED
+  FAMILY_EXCEPT
+}
+
+enum Response {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum KhatmaStatus {
+  NOT_STARTED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum OtpType {
+  ACCOUNT_ACTIVATION
+  PASSWORD_RESET
+  EVENT_INVITATION
+}
