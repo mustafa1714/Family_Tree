@@ -1,15 +1,35 @@
-FROM node:18-alpine
+FROM node:18-alpine AS base
 
 WORKDIR /usr/src/app
 
+# تثبيت تبعيات النظام لـ Prisma
+RUN apk add --no-cache openssl
+
+FROM base AS builder
+
+# نسخ ملفات تعريف التبعيات
 COPY package*.json ./
+COPY prisma ./prisma/
 
-RUN npm install
+# تثبيت التبعيات
+RUN npm ci
 
+# نسخ بقية الملفات
 COPY . .
 
+# توليد عميل Prisma
+RUN npx prisma generate
+
+# بناء التطبيق
 RUN npm run build
 
-EXPOSE 3000
+FROM base AS runner
 
-CMD ["npm", "run", "start:prod"]
+# نسخ التبعيات الضرورية
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/prisma ./prisma
+
+# أمر التشغيل
+CMD ["npm", "run", "start:migrate"]
